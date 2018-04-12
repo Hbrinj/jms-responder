@@ -5,11 +5,12 @@ import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.testingsyndicate.jms.responder.model.BodySource;
 import com.testingsyndicate.jms.responder.model.Request;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-@JsonDeserialize(builder = BodyMatcher.Builder.class)
+@JsonDeserialize(builder = HashMatcher.Builder.class)
 public final class HashMatcher implements Matcher {
 
     private final String body;
@@ -24,12 +25,19 @@ public final class HashMatcher implements Matcher {
         } else {
             body = builder.body;
         }
-        md.update(this.body.getBytes());
-        this.bodyDigest = md.digest();
+
+        if (null != this.body) {
+            md.update(this.body.getBytes());
+            this.bodyDigest = md.digest();
+        } else {
+            this.bodyDigest = null;
+        }
+
     }
 
     public boolean matches(Request request) {
         MessageDigest md = null;
+        byte[] requestBodyDigest = null;
         try{
             md = MessageDigest.getInstance("SHA-256");
         } catch (NoSuchAlgorithmException e) {
@@ -40,9 +48,12 @@ public final class HashMatcher implements Matcher {
             requestBody = requestBody.trim();
         }
 
-        md.update(requestBody.getBytes());
-        byte[] requestBodyDigest = md.digest();
-        return Objects.equals(bodyDigest, requestBodyDigest);
+        if( null != requestBody) {
+            md.update(requestBody.getBytes());
+            requestBodyDigest = md.digest();
+        }
+
+        return Arrays.equals(bodyDigest, requestBodyDigest);
     }
 
     public String getBody() {
@@ -51,6 +62,14 @@ public final class HashMatcher implements Matcher {
 
     public static Builder newBuilder() {
         return new Builder();
+    }
+
+    private String derp(byte[] by) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : by) {
+            sb.append(String.format("%02X", b));
+        }
+        return sb.toString();
     }
 
     @JsonPOJOBuilder
